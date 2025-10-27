@@ -11,9 +11,11 @@ app = Flask(__name__)
 
 ACCOUNTS_FILE = 'accounts.json'
 
+
 # ✅ تحميل الحسابات
 def load_accounts():
     return json.load(open(ACCOUNTS_FILE)) if os.path.exists(ACCOUNTS_FILE) else {}
+
 
 # ✅ جلب التوكن من API
 async def fetch_token(session, uid, password):
@@ -34,6 +36,7 @@ async def fetch_token(session, uid, password):
         return None
     return None
 
+
 # ✅ جلب كل التوكنات
 async def get_tokens_live():
     accounts = load_accounts()
@@ -44,6 +47,7 @@ async def get_tokens_live():
         tokens = [token for token in results if token]
     return tokens
 
+
 # ✅ التشفير
 def encrypt_message(plaintext):
     key = b'Yg&tc%DEuh6%Zc^8'
@@ -51,16 +55,19 @@ def encrypt_message(plaintext):
     cipher = AES.new(key, AES.MODE_CBC, iv)
     return binascii.hexlify(cipher.encrypt(pad(plaintext, AES.block_size))).decode()
 
+
 def create_uid_proto(uid):
     pb = uid_generator_pb2.uid_generator()
     pb.saturn_ = int(uid)
     pb.garena = 1
     return pb.SerializeToString()
 
+
 def create_like_proto(uid):
     pb = like_pb2.like()
     pb.uid = int(uid)
     return pb.SerializeToString()
+
 
 def decode_protobuf(binary):
     try:
@@ -70,39 +77,41 @@ def decode_protobuf(binary):
     except DecodeError:
         return None
 
+
 def make_request(enc_uid, token):
     url = "https://clientbp.ggblueshark.com/GetPlayerPersonalShow"
     headers = {
-            'User-Agent': "Dalvik/2.1.0 (Linux; U; Android 9; ASUS_Z01QD Build/PI)",
-            'Connection': "Keep-Alive",
-            'Accept-Encoding': "gzip",
-            'Authorization': f"Bearer {token}",
-            'Content-Type': "application/x-www-form-urlencoded",
-            'Expect': "100-continue",
-            'X-Unity-Version': "2018.4.11f1",
-            'X-GA': "v1 1",
-            'ReleaseVersion': "OB50"
-        }
+        'User-Agent': "Dalvik/2.1.0 (Linux; U; Android 9; ASUS_Z01QD Build/PI)",
+        'Connection': "Keep-Alive",
+        'Accept-Encoding': "gzip",
+        'Authorization': f"Bearer {token}",
+        'Content-Type': "application/x-www-form-urlencoded",
+        'Expect': "100-continue",
+        'X-Unity-Version': "2018.4.11f1",
+        'X-GA': "v1 1",
+        'ReleaseVersion': "OB50"
+    }
     try:
         res = requests.post(url, data=bytes.fromhex(enc_uid), headers=headers, verify=False)
         return decode_protobuf(res.content)
     except:
         return None
 
+
 # ✅ إرسال لايك واحد
-async def (enc_uid, token):
+async def send_request(enc_uid, token):
     url = "https://clientbp.ggblueshark.com/LikeProfile"
     headers = {
-            'User-Agent': "Dalvik/2.1.0 (Linux; U; Android 9; ASUS_Z01QD Build/PI)",
-            'Connection': "Keep-Alive",
-            'Accept-Encoding': "gzip",
-            'Authorization': f"Bearer {token}",
-            'Content-Type': "application/x-www-form-urlencoded",
-            'Expect': "100-continue",
-            'X-Unity-Version': "2018.4.11f1",
-            'X-GA': "v1 1",
-            'ReleaseVersion': "OB50"
-        }
+        'User-Agent': "Dalvik/2.1.0 (Linux; U; Android 9; ASUS_Z01QD Build/PI)",
+        'Connection': "Keep-Alive",
+        'Accept-Encoding': "gzip",
+        'Authorization': f"Bearer {token}",
+        'Content-Type': "application/x-www-form-urlencoded",
+        'Expect': "100-continue",
+        'X-Unity-Version': "2018.4.11f1",
+        'X-GA': "v1 1",
+        'ReleaseVersion': "OB50"
+    }
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(url, data=bytes.fromhex(enc_uid), headers=headers) as r:
@@ -110,11 +119,13 @@ async def (enc_uid, token):
     except:
         return None
 
+
 # ✅ إرسال لايكات لكل التوكنات
 async def send_likes(uid, tokens):
     enc_uid = encrypt_message(create_like_proto(uid))
     tasks = [send_request(enc_uid, token) for token in tokens]
     return await asyncio.gather(*tasks)
+
 
 # ✅ نقطة النهاية
 @app.route('/like', methods=['GET'])
@@ -155,10 +166,13 @@ def like_handler():
         "status": 1 if likes_after > likes_before else 2
     })
 
+
 @app.route('/')
 def home():
-    return jsonify({"status": "online", "message": "Like API is running ✅"})
+    return jsonify({"status": "online ✅", "message": "Like API running on Render 🚀"})
 
-# ✅ هذا لا يُستخدم في Vercel ولكن نتركه للتشغيل المحلي
+
+# ✅ Render يرسل PORT في متغير بيئي (Environment Variable)
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    port = int(os.environ.get("PORT", 10000))  # Render يعطيك PORT تلقائي
+    app.run(host='0.0.0.0', port=port)
